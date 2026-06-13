@@ -1,0 +1,11 @@
+# Foundry Agents API
+azure-ai-agents>=1.1.0
+
+# Azure Identity (DefaultAzureCredential)
+azure-identity>=1.15.0
+
+# Foundry Knowledge Index backing store (one-time setup)
+azure-search-documents>=11.6.0
+
+# Utilities
+python-dotenv>=1.0.0

@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Insurance Claims Intelligence Agent — Architecture</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0a0f1e;
+    color: #e8eaf0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 24px;
+  }
+
+  /* ── Title ── */
+  .title-block {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .title-block h1 {
+    font-size: 1.9rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    background: linear-gradient(90deg, #4fc3f7, #7c4dff, #40c4aa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .title-block p {
+    margin-top: 8px;
+    font-size: 0.92rem;
+    color: #8899aa;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Diagram container ── */
+  .diagram {
+    width: 100%;
+    max-width: 1100px;
+    position: relative;
+  }
+
+  /* ── Rows ── */
+  .row {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    gap: 16px;
+    margin-bottom: 0;
+  }
+
+  /* ── Connector strips between rows ── */
+  .connector-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    height: 36px;
+    margin: 0;
+  }
+  .arrow-down {
+    width: 2px;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #4fc3f7;
+    font-size: 20px;
+    line-height: 1;
+    height: 36px;
+    justify-content: flex-end;
+  }
+  .arrow-down::before {
+    content: '';
+    display: block;
+    flex: 1;
+    width: 2px;
+    background: linear-gradient(#4fc3f7aa, #4fc3f7);
+  }
+  .arrow-down::after { content: '▼'; }
+  .arrow-side {
+    color: #4fc3f7;
+    font-size: 18px;
+    align-self: center;
+  }
+
+  /* ── Base card ── */
+  .card {
+    border-radius: 12px;
+    padding: 14px 18px;
+    position: relative;
+    border: 1.5px solid transparent;
+    flex: 1;
+  }
+  .card .card-icon { font-size: 1.4rem; margin-bottom: 4px; display: block; }
+  .card .card-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .card .card-name {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    line-height: 1.3;
+  }
+  .card .card-desc {
+    font-size: 0.75rem;
+    color: #aabbcc;
+    line-height: 1.45;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 2px 7px;
+    border-radius: 20px;
+    margin-top: 6px;
+    text-transform: uppercase;
+  }
+
+  /* ── Platform cards (top row) ── */
+  .platform { max-width: 280px; min-width: 200px; }
+
+  .foundry-card {
+    background: linear-gradient(135deg, #0d1b2a, #132540);
+    border-color: #4fc3f7;
+    box-shadow: 0 0 24px #4fc3f730, inset 0 0 40px #0a1f3320;
+  }
+  .foundry-card .card-title { color: #4fc3f7; }
+  .foundry-card .badge { background: #4fc3f720; color: #4fc3f7; border: 1px solid #4fc3f760; }
+
+  .m365-card {
+    background: linear-gradient(135deg, #0d1a2a, #0f2035);
+    border-color: #0078d4;
+    box-shadow: 0 0 24px #0078d430;
+  }
+  .m365-card .card-title { color: #0078d4; }
+  .m365-card .badge { background: #0078d420; color: #4da6ff; border: 1px solid #0078d460; }
+
+  .gh-card {
+    background: linear-gradient(135deg, #0d1117, #161b22);
+    border-color: #6e40c9;
+    box-shadow: 0 0 24px #6e40c930;
+  }
+  .gh-card .card-title { color: #a371f7; }
+  .gh-card .badge { background: #6e40c920; color: #c9a7ff; border: 1px solid #6e40c960; }
+
+  /* ── Foundry IQ card ── */
+  .iq-card {
+    background: linear-gradient(135deg, #0a1520, #0e1f30);
+    border-color: #40c4aa;
+    box-shadow: 0 0 28px #40c4aa30, inset 0 0 60px #40c4aa08;
+    max-width: 100%;
+  }
+  .iq-card .card-title { color: #40c4aa; }
+  .iq-card .badge { background: #40c4aa20; color: #40c4aa; border: 1px solid #40c4aa60; }
+  .iq-sources {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .iq-source {
+    background: #40c4aa18;
+    border: 1px solid #40c4aa40;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.73rem;
+    color: #40c4aa;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ── Pipeline section ── */
+  .pipeline-section {
+    background: linear-gradient(135deg, #0c1322, #111826);
+    border: 1.5px solid #2a3a52;
+    border-radius: 14px;
+    padding: 20px 24px;
+    width: 100%;
+    box-shadow: 0 4px 32px #00000050;
+  }
+  .pipeline-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #4fc3f7;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pipeline-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, #4fc3f750, transparent);
+  }
+
+  /* Stage grid */
+  .stages {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    align-items: start;
+  }
+  .stage {
+    border-radius: 10px;
+    padding: 10px 8px;
+    text-align: center;
+    border: 1px solid #2a3a52;
+    background: #0d1827;
+    position: relative;
+  }
+  .stage.concurrent { border-color: #f59e0b60; background: #1a1205; }
+  .stage.hitl       { border-color: #ef444460; background: #1a0808; }
+  .stage.kb         { border-color: #40c4aa60; background: #081410; }
+  .stage.final      { border-color: #a371f760; background: #100d1a; }
+
+  .stage-num {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #556677;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .stage-icon { font-size: 1.3rem; margin-bottom: 4px; display: block; }
+  .stage-name {
+    font-size: 0.68rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 4px;
+    color: #d0e0f0;
+  }
+  .stage-tag {
+    font-size: 0.57rem;
+    padding: 1px 5px;
+    border-radius: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    display: inline-block;
+    text-transform: uppercase;
+  }
+  .tag-foundry { background: #4fc3f720; color: #4fc3f7; border: 1px solid #4fc3f750; }
+  .tag-rules   { background: #f59e0b20; color: #fbbf24; border: 1px solid #f59e0b50; }
+  .tag-kb      { background: #40c4aa20; color: #40c4aa; border: 1px solid #40c4aa50; }
+  .tag-hitl    { background: #ef444420; color: #f87171; border: 1px solid #ef444450; }
+  .tag-conc    { background: #f59e0b20; color: #fbbf24; border: 1px solid #f59e0b50; }
+  .tag-appeal  { background: #a371f720; color: #c9a7ff; border: 1px solid #a371f750; }
+
+  /* Concurrent brace */
+  .concurrent-group {
+    display: contents;
+  }
+
+  /* ── Orchestration patterns ── */
+  .patterns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .pattern {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #0d1827;
+    border: 1px solid #2a3a52;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.72rem;
+  }
+  .pattern-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Appeal & Output row ── */
+  .output-card {
+    background: linear-gradient(135deg, #0d1520, #121a2a);
+    border: 1.5px solid #2a3a52;
+    border-radius: 12px;
+    padding: 14px 18px;
+    flex: 1;
+  }
+  .output-card .card-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #8899aa; margin-bottom: 6px; }
+  .output-items { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .output-item {
+    font-size: 0.72rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: #0a1520;
+    border: 1px solid #2a3a52;
+    color: #aabbcc;
+    display: flex; align-items: center; gap: 5px;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 28px;
+    justify-content: center;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 0.72rem; color: #7788aa;
+  }
+  .legend-swatch {
+    width: 28px; height: 3px; border-radius: 2px;
+  }
+
+  /* ── Spacer ── */
+  .gap-sm { height: 16px; }
+  .gap-md { height: 28px; }
+
+  /* ── Concurrent bracket visual ── */
+  .concurrent-wrapper {
+    grid-column: 3 / 5;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    position: relative;
+  }
+  .concurrent-wrapper::before {
+    content: '⇄  concurrent';
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.58rem;
+    color: #f59e0b;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    background: #1a1205;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid #f59e0b40;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 800px) {
+    .stages { grid-template-columns: repeat(4, 1fr); }
+    .platform { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="title-block">
+  <h1>◆ Insurance Claims Intelligence Agent</h1>
+  <p>Architecture Diagram &nbsp;·&nbsp; Microsoft Foundry &nbsp;·&nbsp; Azure AI Search &nbsp;·&nbsp; GitHub Copilot</p>
+</div>
+
+<div class="diagram">
+
+  <!-- ══ ROW 1: Platform tier ══ -->
+  <div class="row">
+
+    <!-- Microsoft Foundry -->
+    <div class="card platform foundry-card">
+      <span class="card-icon">🔷</span>
+      <div class="card-title">Microsoft Foundry</div>
+      <div class="card-name">AI Agent Platform</div>
+      <div class="card-desc">
+        Hosts all 8 LLM agents as <strong>Foundry Hosted Agents</strong>.
+        Manages model deployments, credentials, and agent lifecycle.
+        Provides the <code>AgentsClient</code> for thread-based inference.
+      </div>
+      <span class="badge">8 hosted agents · gpt-4o</span>
+    </div>
+
+    <!-- GitHub Copilot -->
+    <div class="card platform gh-card">
+      <span class="card-icon">🤖</span>
+      <div class="card-title">GitHub Copilot</div>
+      <div class="card-name">AI-Assisted Development</div>
+      <div class="card-desc">
+        Used throughout development to scaffold agent instructions,
+        refine multi-step reasoning prompts, and generate orchestration
+        pipeline logic.
+      </div>
+      <span class="badge">Dev accelerator</span>
+    </div>
+
+    <!-- Microsoft 365 / Entra -->
+    <div class="card platform m365-card">
+      <span class="card-icon">🔑</span>
+      <div class="card-title">Microsoft Entra ID</div>
+      <div class="card-name">Identity &amp; Auth</div>
+      <div class="card-desc">
+        <code>DefaultAzureCredential</code> via Azure Identity SDK.
+        Passwordless auth to Foundry project endpoint and Azure AI Search.
+        Supports interactive <code>az login</code> and MI.
+      </div>
+      <span class="badge">DefaultAzureCredential</span>
+    </div>
+
+  </div><!-- /row 1 -->
+
+  <div class="gap-md"></div>
+
+  <!-- ══ ROW 2: Foundry IQ ══ -->
+  <div class="row">
+    <div class="card iq-card" style="max-width:100%">
+      <span class="card-icon">◈</span>
+      <div class="card-title">Foundry IQ — Agentic Knowledge Retrieval Layer</div>
+      <div class="card-name">Grounded reasoning · citation-enforced answers · hallucination reduction</div>
+      <div class="card-desc">
+        Azure AI Search index backed by policy documents and historical precedents.
+        Attached to the Policy Reasoning Agent and Compliance Agent as an
+        <strong>AzureAISearchTool</strong> at creation time — Foundry retrieves grounded context
+        automatically before each inference call.
+      </div>
+      <div class="iq-sources">
+        <div class="iq-source">📄 auto_policy_manual.md</div>
+        <div class="iq-source">📋 claims_precedents.md</div>
+        <div class="iq-source">🔍 Azure AI Search Index</div>
+        <div class="iq-source">⚡ Semantic ranking · top-k=5</div>
+        <div class="iq-source">🔒 IRDA / Regulatory rules</div>
+      </div>
+    </div>
+  </div><!-- /row 2 -->
+
+  <div class="gap-md"></div>
+
+  <!-- ══ ROW 3: 7-stage pipeline ══ -->
+  <div class="pipeline-section">
+
+    <div class="pipeline-title">◈ 7-Stage Agentic Pipeline — Sequential · Concurrent · HITL · Override · Appeal</div>
+
+    <div style="position:relative; padding-top: 22px;">
+      <div class="stages">
+
+        <!-- Stage 1 -->
+        <div class="stage">
+          <div class="stage-num">1 / 7</div>
+          <span class="stage-icon">📥</span>
+          <div class="stage-name">Intake Agent</div>
+          <span class="stage-tag tag-foundry">Foundry</span>
+        </div>
+
+        <!-- Stage 2 -->
+        <div class="stage">
+          <div class="stage-num">2 / 7</div>
+          <span class="stage-icon">📋</span>
+          <div class="stage-name">Document Validation</div>
+          <span class="stage-tag tag-rules">Rules</span>
+        </div>
+
+        <!-- Stage 3a — Policy (concurrent group) -->
+        <div class="stage concurrent" style="position:relative;">
+          <div style="position:absolute;top:-18px;left:0;right:0;text-align:center;">
+            <span style="font-size:0.58rem;color:#f59e0b;font-weight:700;background:#1a1205;padding:1px 6px;border-radius:4px;border:1px solid #f59e0b40;white-space:nowrap;">⇄ concurrent</span>
+          </div>
+          <div class="stage-num">3 / 7</div>
+          <span class="stage-icon">📜</span>
+          <div class="stage-name">Policy Reasoning</div>
+          <span class="stage-tag tag-kb">Foundry ◈ KB</span>
+        </div>
+
+        <!-- Stage 3b — Fraud (concurrent) -->
+        <div class="stage concurrent">
+          <div class="stage-num">3 / 7</div>
+          <span class="stage-icon">🔍</span>
+          <div class="stage-name">Fraud Detection</div>
+          <span class="stage-tag tag-conc">Foundry · 5-step</span>
+        </div>
+
+        <!-- Stage 4 -->
+        <div class="stage hitl">
+          <div class="stage-num">4 / 7</div>
+          <span class="stage-icon">⚖️</span>
+          <div class="stage-name">Decision Agent + HITL</div>
+          <span class="stage-tag tag-hitl">Human Gate</span>
+        </div>
+
+        <!-- Stage 5 -->
+        <div class="stage kb">
+          <div class="stage-num">5 / 7</div>
+          <span class="stage-icon">🏛️</span>
+          <div class="stage-name">Compliance Agent</div>
+          <span class="stage-tag tag-kb">Foundry ◈ KB</span>
+        </div>
+
+        <!-- Stage 6 -->
+        <div class="stage">
+          <div class="stage-num">6 / 7</div>
+          <span class="stage-icon">💳</span>
+          <div class="stage-name">Reimbursement Agent</div>
+          <span class="stage-tag tag-foundry">Foundry</span>
+        </div>
+
+      </div><!-- /stages grid -->
+    </div>
+
+    <!-- Stage 7 + Appeals side-by-side -->
+    <div style="display:flex; gap:8px; margin-top:8px; align-items:stretch;">
+      <div class="stage final" style="flex:1; text-align:left; display:flex; align-items:center; gap:12px; padding:10px 16px;">
+        <span style="font-size:1.5rem;">📊</span>
+        <div>
+          <div class="stage-num">7 / 7</div>
+          <div class="stage-name" style="font-size:0.8rem;">Claims Summarizer — Executive summary saved to <code>checkpoints/</code></div>
+          <span class="stage-tag tag-foundry">Foundry · full-pipeline view</span>
+        </div>
+      </div>
+      <div class="stage final" style="width:240px; flex-shrink:0; text-align:left; display:flex; align-items:center; gap:12px; padding:10px 16px;">
+        <span style="font-size:1.5rem;">⚖️</span>
+        <div>
+          <div class="stage-num">Appeal flow</div>
+          <div class="stage-name" style="font-size:0.8rem;">Appeals Agent — Counterfactual re-evaluation</div>
+          <span class="stage-tag tag-appeal">Foundry · --appeal flag</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Orchestration patterns -->
+    <div class="patterns">
+      <div class="pattern">
+        <div class="pattern-dot" style="background:#4fc3f7"></div>
+        Sequential: stages 1→2→4→5→6→7
+      </div>
+      <div class="pattern">
+        <div class="pattern-dot" style="background:#f59e0b"></div>
+        Concurrent: stage 3 — asyncio.gather
+      </div>
+      <div class="pattern">
+        <div class="pattern-dot" style="background:#ef4444"></div>
+        HITL: stage 4 — checkpoint / resume
+      </div>
+      <div class="pattern">
+        <div class="pattern-dot" style="background:#40c4aa"></div>
+        KB override: stage 5 — Compliance → re-escalate
+      </div>
+      <div class="pattern">
+        <div class="pattern-dot" style="background:#a371f7"></div>
+        Appeal: counterfactual reasoning branch
+      </div>
+    </div>
+
+  </div><!-- /pipeline-section -->
+
+  <div class="gap-md"></div>
+
+  <!-- ══ ROW 4: Inputs & Outputs ══ -->
+  <div class="row" style="align-items:stretch;">
+
+    <!-- Inputs -->
+    <div class="output-card">
+      <div class="card-title">📥  Claim Inputs</div>
+      <div class="output-items">
+        <div class="output-item">⌨️ Interactive terminal form</div>
+        <div class="output-item">📁 JSON file (--claim)</div>
+        <div class="output-item">🔄 Resume HITL (--resume)</div>
+        <div class="output-item">⚖️ Appeal (--appeal)</div>
+        <div class="output-item">🏷️ Auto · Home · Health · Travel</div>
+      </div>
+    </div>
+
+    <!-- Agent Registry -->
+    <div class="output-card" style="border-color:#4fc3f740;">
+      <div class="card-title" style="color:#4fc3f7;">⚙️  Agent Registry — Startup</div>
+      <div class="card-desc" style="font-size:0.73rem; margin-top:4px;">
+        ONE <code>AgentsClient</code> shared across all claims.<br/>
+        EIGHT Foundry agents created once and reused.<br/>
+        All agents deleted on shutdown (cleanup).
+      </div>
+      <div class="output-items" style="margin-top:8px;">
+        <div class="output-item" style="color:#4fc3f7; border-color:#4fc3f730;">◈ Intake</div>
+        <div class="output-item" style="color:#4fc3f7; border-color:#4fc3f730;">◈ Document</div>
+        <div class="output-item" style="color:#4fc3f7; border-color:#4fc3f730;">◈ Policy</div>
+        <div class="output-item" style="color:#4fc3f7; border-color:#4fc3f730;">◈ Fraud</div>
+        <div class="output-item" style="color:#4fc3f7; border-color:#4fc3f730;">◈ Decision</div>
+        <div class="output-item" style="color:#40c4aa; border-color:#40c4aa30;">◈ Compliance</div>
+        <div class="output-item" style="color:#4fc3f7; border-color:#4fc3f730;">◈ Reimburse</div>
+        <div class="output-item" style="color:#a371f7; border-color:#a371f730;">◈ Appeals</div>
+        <div class="output-item" style="color:#4fc3f7; border-color:#4fc3f730;">◈ Summarizer</div>
+      </div>
+    </div>
+
+    <!-- Outputs -->
+    <div class="output-card">
+      <div class="card-title">📤  Claim Outputs</div>
+      <div class="output-items">
+        <div class="output-item">✓ Approval notice + PAY reference</div>
+        <div class="output-item">✗ Denial letter + policy citation</div>
+        <div class="output-item">◉ HITL checkpoint (JSON)</div>
+        <div class="output-item">📊 Executive summary (.txt)</div>
+        <div class="output-item">⚖️ Appeal outcome + reasoning</div>
+        <div class="output-item">₹ INR reimbursement amount</div>
+      </div>
+    </div>
+
+  </div><!-- /row 4 -->
+
+  <!-- ══ Legend ══ -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#4fc3f7"></div>
+      Foundry Hosted Agent
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#40c4aa"></div>
+      Foundry IQ (KB-grounded)
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#f59e0b"></div>
+      Concurrent execution
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#ef4444"></div>
+      HITL gate
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#a371f7"></div>
+      Appeals flow
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#0078d4"></div>
+      Microsoft Entra ID
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#6e40c9"></div>
+      GitHub Copilot
+    </div>
+  </div>
+
+</div><!-- /diagram -->
+
+<p style="margin-top:32px; font-size:0.7rem; color:#445566; text-align:center;">
+  Insurance Claims Intelligence Agent &nbsp;·&nbsp; Built on Microsoft Foundry Agents API v1.1 &nbsp;·&nbsp; Python 3.12 &nbsp;·&nbsp; azure-ai-agents 1.1.0
+</p>
+
+</body>
+</html>
